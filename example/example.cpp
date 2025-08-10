@@ -3,34 +3,6 @@
 #include <glm/glm.hpp>
 #include <functional>
 #include "myGLutil.hpp"
-static const char *vsCode = R"DENOM(
-out vec2 vecUV;
-out vec3 vecPos;
-void main()
-{
-/*
-    if(gl_VertexID % 4 == 0)
-        gl_Position = vec4(0,0,0,1);
-    if(gl_VertexID % 4 == 1)
-        gl_Position = vec4(1,0,0,1);
-    if(gl_VertexID % 4 == 2)
-        gl_Position = vec4(1,1,0,1);
-    if(gl_VertexID % 4 == 3)
-        gl_Position = vec4(0,1,0,1);
-*/
-    gl_Position = vec4(inPos,1);
-    vecUV = inUV;
-}
-)DENOM";
-static const char *fsCode = R"DENOM(
-in vec2 vecUV;
-in vec3 vecPos;
-out vec4 outColor;
-void main()
-{
-    outColor = vec4(vecUV, 0, 1);
-}
-)DENOM";
 glm::vec3 posSplit[4] = {
     {-0.5f, -0.5f, 0.5f},
     { 0.5f, -0.5f, 0.5f},
@@ -65,7 +37,7 @@ class TestWindow : public mGLu::DefaultWindow
 {
     mGLu::VAO testVAO;
     mGLu::FixedBuffer interleavedVBO, posVBO, uvVBO, EBO;
-    mGLu::Shader testShader;
+    mGLu::ShaderProgram testShaders;
     mGLu::Drawable splitDrawable, interleavedDrawable;
     mGLu::MouseCallbackFlex testMouseCallback;
 public:
@@ -99,11 +71,11 @@ public:
         interleavedDrawable.SetBinding(uvBinding, 0, offsetof(vertexInterleaved, uv), sizeof(vertexInterleaved));
         
         splitDrawable.indexBuffer = interleavedDrawable.indexBuffer = EBO;
-        
-        std::string shaderCode = (testVAO.GetShaderPrefix() + vsCode).c_str();
 
-        testShader = mGLu::Shader(*this, shaderCode.c_str(), fsCode);
-        splitDrawable.shader = interleavedDrawable.shader = testShader;
+        testShaders = mGLu::ShaderProgram({
+            mGLu::Shader::FromFile(GL_VERTEX_SHADER, "example/shaders/example.vert.glsl"),
+            mGLu::Shader::FromFile(GL_FRAGMENT_SHADER, "example/shaders/example.frag.glsl")});
+        splitDrawable.shaderProgram = interleavedDrawable.shaderProgram = testShaders;
     }
     virtual void Update() override
     {

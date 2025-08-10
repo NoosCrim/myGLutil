@@ -22,7 +22,7 @@ namespace mGLu
 		VAOview vao;
 		std::vector<Buffer> buffers;
 		Buffer indexBuffer;
-		Shader shader;
+		ShaderProgram shaderProgram;
 		Drawable();
 
 		Drawable(const Drawable& other);

@@ -37,22 +37,19 @@ namespace mGLu
     {
         for(int unpressed_key : _1frameStates)
         {
-            for(int unpressed_button : _1frameStates)
-        {
-            switch(keyStates[unpressed_button])
+            switch(keyStates[unpressed_key])
             {
             case DOWN:
             case UP:
                 continue;
             case UNPRESS:
-                keyStates[unpressed_button] = UP;
+                keyStates[unpressed_key] = UP;
                 break;
             case PRESS:
-                keyStates[unpressed_button] = DOWN;    
+                keyStates[unpressed_key] = DOWN;    
                 break;
             }
-        }
-        _1frameStates.clear();
+            _1frameStates.clear();
         }
         _1frameStates.clear();
     }

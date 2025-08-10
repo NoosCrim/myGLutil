@@ -1,0 +1,70 @@
+$(eval $(call reset_target))
+
+TEST_LINK_FILE := $(OUT_DIR)/$(TEST_DIR)/$(OBJ_DIR)/test.o
+
+PHONY.: test test_msg
+test: test_msg $(OUT_DIR)/$(TEST_DIR)/$(OBJ_DIR)/ $(OUT_DIR)/$(TEST_DIR)/$(DEP_DIR)/ $(TEST_LINK_FILE)
+	@:
+
+test_msg:
+	@printf "$(STATUS_MSG_PREFIX) Compiling test.cpp... \n"
+
+$(TEST_LINK_FILE): make/test.cpp
+	g++ -MMD -MP -MF $(OUT_DIR)/$(TEST_DIR)/$(DEP_DIR)/test.d $(COMPILER_FLAGS) -c make/test.cpp -o $@
+-include $(OUT_DIR)/$(TEST_DIR)/$(DEP_DIR)/test.d
+
+define test_target
+$(call add_target_test)
+$(TARGET_NAME)_OUT_DIR := $(if $(TARGET_OUT_DIR), $(TARGET_OUT_DIR), $(OUT_DIR)/$(TEST_DIR))/
+$(TARGET_NAME)_DEP_DIR := $$($(TARGET_NAME)_OUT_DIR)/$(DEP_DIR)/
+$(TARGET_NAME)_OBJ_DIR := $$($(TARGET_NAME)_OUT_DIR)/$(OBJ_DIR)/
+$(TARGET_NAME)_LOG_DIR := $(if LOG_DIR, $$($(TARGET_NAME)_OUT_DIR)/$(LOG_DIR))/
+
+$(TARGET_NAME)_SRC := $(TESTED_DIR)/$(TEST_DIR)/$(TARGET_NAME).cpp
+$(TARGET_NAME)_OBJ := $$($(TARGET_NAME)_OBJ_DIR)/$(TARGET_NAME).o
+$(TARGET_NAME)_DEP := $$($(TARGET_NAME)_DEP_DIR)/$(TARGET_NAME).d
+$(TARGET_NAME)_LOG := $(if LOG_DIR, $$($(TARGET_NAME)_LOG_DIR)/$(TARGET_NAME).log)
+$(TARGET_NAME)_OUT_FILE := $$($(TARGET_NAME)_OUT_DIR)/$(TARGET_NAME)
+
+$(TARGET_NAME)_HEADER_DIRS := $(if $(TARGET_HEADER_DIRS), $(TARGET_HEADER_DIRS), $(TESTED_DIR)/$(TEST_DIR)) make
+$(TARGET_NAME)_COMPILER_FLAGS := $(if $(TARGET_COMPILER_FLAGS), $(TARGET_COMPILER_FLAGS), $(COMPILER_FLAGS)) $$(addprefix -I, $$($(TARGET_NAME)_HEADER_DIRS))
+
+$(TARGET_NAME)_COMPILE_DEPS := $(TARGET_COMPILE_DEPS)
+$(TARGET_NAME)_LINK_DEPS := test $(TARGET_LINK_DEPS)
+
+PHONY.: $(TARGET_NAME) $(TARGET_NAME)_clean
+$(TARGET_NAME) $$($(TARGET_NAME)_LOG): $(TARGET_NAME)_link $$($(TARGET_NAME)_LOG_DIR)
+	@echo $$($(TARGET_NAME)_OUT_FILE)
+	@if ! $$($(TARGET_NAME)_OUT_FILE) $$(if $$($(TARGET_NAME)_LOG), > $$($(TARGET_NAME)_LOG), ); then\
+		printf "$(FAILED_MSG_PREFIX) test: $(TARGET_NAME) failed\n"; else\
+		printf "$(SUCCESS_MSG_PREFIX) test: $(TARGET_NAME) succeeded\n"; fi
+
+$(TARGET_NAME)_clean:
+	rm -rf $$($(TARGET_NAME)_OUT_FILE)
+
+# link
+.PHONY: $(TARGET_NAME)_link_msg
+$$($(TARGET_NAME)_OUT_FILE): 
+	g++ -o $$@ $$($(TARGET_NAME)_LINK_FILES) $$($(TARGET_NAME)_LINKER_FLAGS)
+
+$(TARGET_NAME)_link: $$($(TARGET_NAME)_LINK_FILES) $$($(TARGET_NAME)_LINK_DEPS) $(TARGET_NAME)_compile  $$($(TARGET_NAME)_OUT_FILE) $(TARGET_NAME)_link_msg $$($(TARGET_NAME)_OUT_DIR)
+
+$(TARGET_NAME)_link_msg:
+	@printf "$(STATUS_MSG_PREFIX) Linking $(TARGET_NAME)... \n"
+
+# compile
+.PHONY: $(TARGET_NAME)_compile $(TARGET_NAME)_link $(TARGET_NAME)_compile_msg
+$(TARGET_NAME)_compile: $$($(TARGET_NAME)_COMPILE_DEPS) $(TARGET_NAME)_compile_msg $$($(TARGET_NAME)_DEP_DIR) $$($(TARGET_NAME)_OBJ_DIR) $$($(TARGET_NAME)_OBJ)
+$$($(TARGET_NAME)_OBJ): $$($(TARGET_NAME)_SRC) 
+	g++ -DTEST_NAME=$(TARGET_NAME) -MMD -MP -MF $$($(TARGET_NAME)_DEP) $$($(TARGET_NAME)_COMPILER_FLAGS) -c $$($(TARGET_NAME)_SRC) -o $$($(TARGET_NAME)_OBJ)
+
+-include $$($(TARGET_NAME)_DEP)
+
+$(TARGET_NAME)_compile_msg:
+	@printf "$(STATUS_MSG_PREFIX) Compiling $(TARGET_NAME)... \n"
+	
+$(TARGET_NAME)_LINK_FILES := $(TARGET_LINK_FILES) $$($(TARGET_NAME)_OBJ) $(TEST_LINK_FILE)
+$(TARGET_NAME)_LINKER_FLAGS := $(if $(TARGET_LINKER_FLAGS), $(TARGET_LINKER_FLAGS), $(LINKER_FLAGS))
+$(TARGET_NAME)_LINK_DEPS := $(TARGET_LINKER_DEPS)
+
+endef

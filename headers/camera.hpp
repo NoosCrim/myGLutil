@@ -1,6 +1,6 @@
 #pragma once
-
-#include "window.hpp"
+#include "GL/glew.h"
+#include "glm/glm.hpp"
 namespace mGLu
 {
     class Camera
@@ -12,7 +12,6 @@ namespace mGLu
     public:
         glm::mat4 view{1.0f}, projection{1.0f};
         Camera(int xOffset, int yOffset, int width, int height, bool useCustomFBO = false);
-        //Camera(int xOffset, int yOffset, int width, int height);
         Camera(const Camera&) = delete;
         void SetSize(int width, int height);
         void SetOffset(int xOffset, int yOffset);
@@ -21,6 +20,5 @@ namespace mGLu
         GLuint GetColorTexture();
         GLuint GetDepthTexture();
         GLuint GetNormalTexture();
-        friend void Window::UseCamera(Camera&);
     };
 }

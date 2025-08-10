@@ -13,7 +13,7 @@ namespace mGLu
 		unsigned int vertexCount;
 		for(unsigned int bindingI = 0; bindingI < bindingData.size(); bindingI++)
 		{
-			unsigned int bufferIndex = bindingData[bindingI].bufferIndex;
+			int bufferIndex = bindingData[bindingI].bufferIndex;
 			if(bufferIndex == -1 || buffers[bufferIndex].GetSize() == 0)
 				continue;
 			GLsizeiptr bufferSize = buffers[bufferIndex].GetSize();
@@ -83,7 +83,7 @@ namespace mGLu
 	{
 		BindToVAO();
 		
-		shader.Use();
+		shaderProgram.Use();
 
 		glBindVertexArray(vao.GetName());
 		glDrawArrays(draw_mode, firstVertex, vertexCount?vertexCount : InferVertexCount());
@@ -93,7 +93,7 @@ namespace mGLu
 		BindToVAO();
 		
 		vao.BindElementBuffer(indexBuffer.GetName());
-		shader.Use();
+		shaderProgram.Use();
 
 		glBindVertexArray(vao.GetName());
 		glDrawElements(draw_mode, indexCount ? indexCount : InferIndexCount(indexType), indexType, nullptr);
@@ -102,7 +102,7 @@ namespace mGLu
 	{
 		BindToVAO();
 		
-		shader.Use();
+		shaderProgram.Use();
 
 		glBindVertexArray(vao.GetName());
 		glDrawArraysInstanced(draw_mode, firstVertex, vertexCount?vertexCount : InferVertexCount(), instanceCount);
@@ -112,7 +112,7 @@ namespace mGLu
 		BindToVAO();
 		
 		vao.BindElementBuffer(indexBuffer.GetName());
-		shader.Use();
+		shaderProgram.Use();
 
 		glBindVertexArray(vao.GetName());
 		glDrawElementsInstanced(draw_mode, indexCount ? indexCount : InferIndexCount(indexType), indexType, nullptr, instanceCount);

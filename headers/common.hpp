@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include <algorithm>
 #include <vector>
+#include <string>
 namespace mGLu
 {
     typedef char *const typeID_t;
@@ -160,4 +161,6 @@ namespace mGLu
                 children.back()->SetParent(newParent);
         }
     };
+
+    bool ReadTxtFile(const char* const path, std::string &out);
 }

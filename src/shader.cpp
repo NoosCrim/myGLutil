@@ -4,105 +4,41 @@
 #include <cstring>
 #include <string>
 
-#include "window.hpp"
-
+#include "common.hpp"
 #include "shader.hpp"
 
-static GLuint __CreateShader(const char *vsCode, const char *fsCode, const char *gsCode)
-{
-	unsigned int vs = 0, fs = 0, gs = 0;
-	GLuint ID = 0;
-	if (vsCode)
-	{
-		//puts(vsCode);
-		vs = glCreateShader(GL_VERTEX_SHADER);
-		glShaderSource(vs, 1, &vsCode, NULL);
-		glCompileShader(vs);
-		GLint compileStatus, logLen;
-		glGetShaderiv(vs, GL_COMPILE_STATUS, &compileStatus);
-		glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &logLen);
-		if (compileStatus != GL_TRUE)
-		{
-			char log[logLen + 1];
-			glGetShaderInfoLog(vs, logLen + 1, 0, log);
-			std::fprintf(stderr, "Vertex Shader Compilation Error: %s\n", log);
-		}
-	}
-	if (fsCode)
-	{
-		fs = glCreateShader(GL_FRAGMENT_SHADER);
-		glShaderSource(fs, 1, &fsCode, NULL);
-		glCompileShader(fs);
-		GLint compileStatus, logLen;
-		glGetShaderiv(fs, GL_COMPILE_STATUS, &compileStatus);
-		glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &logLen);
-		if (compileStatus != GL_TRUE)
-		{
-			char log[logLen + 1];
-			glGetShaderInfoLog(vs, logLen + 1, 0, log);
-			std::fprintf(stderr, "Fragment Shader Compilation Error: %s\n", log);
-		}
-	}
-	if (gsCode)
-	{
-		gs = glCreateShader(GL_GEOMETRY_SHADER);
-		glShaderSource(gs, 1, &gsCode, NULL);
-		glCompileShader(gs);
-		GLint compileStatus, logLen;
-		glGetShaderiv(gs, GL_COMPILE_STATUS, &compileStatus);
-		glGetShaderiv(gs, GL_INFO_LOG_LENGTH, &logLen);
-		if (compileStatus != GL_TRUE)
-		{
-			char log[logLen + 1];
-			glGetShaderInfoLog(vs, logLen + 1, 0, log);
-			std::fprintf(stderr, "Geometry Shader Compilation Error: %s\n", log);
-		}
-	}
-	ID = glCreateProgram();
-	if (vs)
-	{
-		glAttachShader(ID, vs);
-	}
-	if (fs)
-	{
-		glAttachShader(ID, fs);
-	}
-	if (gs)
-	{
-		glAttachShader(ID, gs);
-	}
-	glLinkProgram(ID);
-	GLint linkStatus, logLen;
-	glGetProgramiv(ID, GL_LINK_STATUS, &linkStatus);
-	glGetProgramiv(ID, GL_INFO_LOG_LENGTH, &logLen);
-	if (logLen > 0)
-	{
-		char log[logLen + 1];
-		glGetProgramInfoLog(ID, logLen + 1, 0, log);
-		std::fprintf(stderr, "Shader Linking Error: %s\n", log);
-	}
-	//puts(vsCode);
-	//puts(fsCode);
-	return ID;
-}
-
-mGLu::Shader::Shader()
-{
-	
-}
-mGLu::Shader::Shader(const Shader& other) :
-	ID(other.ID)
+mGLu::Shader::Shader(const Shader& other_) :
+	ID(other_.ID),
+	type(other_.type)
 {
 	if(instanceCount)
 		++*instanceCount;
 }
-mGLu::Shader& mGLu::Shader::operator=(const Shader& other)
+mGLu::Shader::Shader(GLenum type_, const char* const code_):
+	type(type_)
+{
+	GLint compileStatus, logLen;
+	ID = glCreateShader(type);
+	glShaderSource(ID, 1, &code_, NULL);
+	glCompileShader(ID);
+	glGetShaderiv(ID, GL_COMPILE_STATUS, &compileStatus);
+	glGetShaderiv(ID, GL_INFO_LOG_LENGTH, &logLen);
+	if (!compileStatus)
+	{
+		char log[logLen + 1];
+		glGetShaderInfoLog(ID, logLen + 1, 0, log);
+		std::fprintf(stderr, "Fragment Shader Compilation Error: %s\n", log);
+		return;
+	}
+}
+mGLu::Shader& mGLu::Shader::operator=(const Shader& other_)
 {
 	if(instanceCount)
 		--*instanceCount;
 
-	instanceCount = other.instanceCount;
-	ID = other.ID;
+	instanceCount = other_.instanceCount;
+	ID = other_.ID;
+	type = other_.type;
 
 	if(instanceCount)
 		++*instanceCount;
@@ -115,53 +51,80 @@ mGLu::Shader::~Shader()
 		return;
 	if(--*instanceCount == 0)
 	{
+		glDeleteShader(ID);
+		delete instanceCount;
+	}
+	
+}
+
+mGLu::Shader mGLu::Shader::FromFile(GLenum type_, const char* const path_)
+{
+	std::string code;
+	if(!ReadTxtFile(path_, code))
+		return Shader();
+	return Shader(type_, code.c_str());
+}
+
+mGLu::ShaderProgram::ShaderProgram(std::initializer_list<Shader> shaders_)
+{
+	ID = glCreateProgram();
+	for(const Shader &shader : shaders_)
+	{
+		glAttachShader(ID, shader);
+	}
+	glLinkProgram(ID);
+
+	GLint linkStatus, logLen;
+	glGetProgramiv(ID, GL_LINK_STATUS, &linkStatus);
+	glGetProgramiv(ID, GL_INFO_LOG_LENGTH, &logLen);
+	if (!linkStatus)
+	{
+		glDeleteProgram(ID);
+		ID = 0;
+		char log[logLen + 1];
+		glGetProgramInfoLog(ID, logLen + 1, 0, log);
+		std::fprintf(stderr, "Shader Linking Error: %s\n", log);
+	}
+
+	if(ID)
+	{
+		instanceCount = new GLuint(1);
+	}
+}
+
+mGLu::ShaderProgram::ShaderProgram(const ShaderProgram& other_) : 
+	ID(other_.ID)
+{
+	if(instanceCount)
+		++*instanceCount;
+}
+
+mGLu::ShaderProgram& mGLu::ShaderProgram::operator=(const ShaderProgram& other_)
+{
+	if(instanceCount)
+		--*instanceCount;
+
+	instanceCount = other_.instanceCount;
+	ID = other_.ID;
+
+	if(instanceCount)
+		++*instanceCount;
+	
+	return *this;
+}
+mGLu::ShaderProgram::~ShaderProgram()
+{
+	if (!instanceCount)
+		return;
+	if(--*instanceCount == 0)
+	{
 		glDeleteProgram(ID);
 		delete instanceCount;
 	}
 	
 }
-mGLu::Shader::Shader(const char* const vsCode, const char* const fsCode,
-			const char* const gsCode)
-{
-	ID = __CreateShader(vsCode, fsCode, gsCode);
-	if (ID != 0)
-	{
-		instanceCount = new unsigned int(1);
-	}
-}
-mGLu::Shader::Shader(const Window &window, const char* const vsCode, const char* const fsCode,const char* const gsCode)
-{
-	std::string vsWPrefix, fsWPrefix, gsWPrefix;
-	const char *passVS = nullptr, *passFS = nullptr, *passGS = nullptr;
-	if(vsCode)
-	{
-		vsWPrefix += window.GetShaderPrefix(nullptr);
-		vsWPrefix += vsCode;
-		passVS = vsWPrefix.data();
-	}
-	if(fsCode)
-	{
-		fsWPrefix += window.GetShaderPrefix(nullptr);
-		fsWPrefix += fsCode;
-		passFS = fsWPrefix.data();
-	}
-	if(gsCode)
-	{
-		gsWPrefix += window.GetShaderPrefix(nullptr);
-		gsWPrefix += gsCode;
-		passGS = gsWPrefix.data();
-	}
-	ID = __CreateShader(passVS, passFS, passGS);
-	if (ID != 0)
-	{
-		instanceCount = new unsigned int(1);
-	}
-}
-GLuint mGLu::Shader::GetID() const
-{
-	return ID;
-}
-void mGLu::Shader::Use() const
+
+void mGLu::ShaderProgram::Use() const
 {
 	glUseProgram(ID);
 }

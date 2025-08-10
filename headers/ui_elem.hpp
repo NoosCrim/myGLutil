@@ -10,8 +10,6 @@ namespace mGLu
         virtual void MouseCallbackFunc(int button, bool isDown, glm::vec2 cursorPos) override;
         bool ClickCallback(int button, bool isDown, glm::vec2 cursorPos);
     protected:
-
-        Window* myWindow;
         virtual void MyDraw() = 0;
         
     public:

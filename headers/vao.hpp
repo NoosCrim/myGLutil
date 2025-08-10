@@ -27,13 +27,11 @@ namespace mGLu
     };
     class VAO : public VAOview
     {
-        std::string shaderPrefix;
         GLuint nextIndex= 0;
     public:
         VAO();
         GLuint AddAttrib(GLenum type, unsigned int size, std::string shaderVarName, unsigned int divisor = 0);
         GLuint AddFloatMatAttrib(unsigned int cols, unsigned int rows, std::string shaderVarName, unsigned int divisor);
         GLuint AddDoubleMatAttrib(unsigned int cols, unsigned int rows, std::string shaderVarName, unsigned int divisor);
-        const std::string& GetShaderPrefix();
     };
 }

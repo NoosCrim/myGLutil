@@ -1,30 +1,9 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <cstring>
 #include <stdexcept>
 
-#include "shader.hpp"
-#include "camera.hpp"
-
 #include "window.hpp"
-
-static const char* __DefaultWindowShaderPrefix = R"DENOM(
-#version XX0
-struct _mGLuGlobal{
-		mat4 projection;
-		mat4 view;
-		float time;
-		float deltaTime;
-		ivec2 viewportSize;
-	};
-layout(binding = 16, std430) buffer sharedShaderVars {
-	_mGLuGlobal mGLuGlobal;
-};
-
-)DENOM";
-static std::size_t __DefaultWindowShaderPrefixLength = sizeof(__DefaultWindowShaderPrefixLength)-1;
-std::unordered_map<GLFWwindow*, mGLu::Window*> mGLu::Window::__glfwWindowToWindowMap{};
+static std::unordered_map<GLFWwindow*, mGLu::Window*> __glfwWindowToWindowMap{};
 
 static void glfw_error_callback(int error, const char* description)
 {
@@ -102,40 +81,13 @@ struct GLFW_init_handler
 };
 bool GLFW_init_handler::initDone = false;
 
-glm::vec2 mGLu::Window::ScaleWindowPos(glm::vec2 pos, MousePosScaling scaling)
-{
-	switch(scaling)
-	{
-		case WINDOW_CENTER_0_1_CURSOR_POS:
-			return pos;
-		case WINDOW_ORIGIN_0_1_CURSOR_POS:
-			return 0.5f * (pos * glm::vec2(1, -1) + glm::vec2(1,1));
-        case WINDOW_ORIGIN_PIXEL_CURSOR_POS:
-			return ScaleWindowPos(pos, WINDOW_ORIGIN_0_1_CURSOR_POS) * glm::vec2(size);
-		case WINDOW_CENTER_PIXEL_CURSOR_POS:
-			return 0.5f * pos * glm::vec2(size) * glm::vec2(1, -1);
-        case WINDOW_O_1_WIDTH_CURSOR_POS:
-			return ScaleWindowPos(pos, WINDOW_ORIGIN_0_1_CURSOR_POS) * (float)size.x;
-        case WINDOW_O_1_HEIGHT_CURSOR_POS:
-			return ScaleWindowPos(pos, WINDOW_ORIGIN_0_1_CURSOR_POS) * (float)size.y;
-        case WINDOW_O_1_MIN_CURSOR_POS:
-			return ScaleWindowPos(pos, WINDOW_ORIGIN_0_1_CURSOR_POS) * (float)std::min(size.x, size.y);
-        case WINDOW_O_1_MAX_CURSOR_POS:
-			return ScaleWindowPos(pos, WINDOW_ORIGIN_0_1_CURSOR_POS) * (float)std::max(size.x, size.y);
-	}
-	return pos;
-}
-
 mGLu::Window::Window(unsigned int _width, unsigned int _height, const char* title, bool fullscreen, unsigned int maj, unsigned int min, bool debug) : 
-	size({(float)_width, (float)_height}),
-	sizeRatio((float)_width/_height),
+    sizeRatio((float)_width/_height),
+    size({(float)_width, (float)_height}),
 	GLmaj(maj),
-	GLmin(min),
-	shaderPrefix(__DefaultWindowShaderPrefix)
+	GLmin(min)
 {
 	static GLFW_init_handler __glfwInitGlobal;
-	shaderPrefix[10] = '0' + maj;
-	shaderPrefix[11] = '0' + min;
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, maj);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, min);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -155,15 +107,13 @@ mGLu::Window::Window(unsigned int _width, unsigned int _height, const char* titl
 
 	glewInit();
 
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(gl_error_callback, nullptr);
+    if(debug)
+    {
+        glEnable(GL_DEBUG_OUTPUT);
+	    glDebugMessageCallback(gl_error_callback, nullptr);
+    }
 
 	glfwSwapInterval(1);
-
-	sharedShaderVars.data.viewportWidth = _width;
-	sharedShaderVars.data.viewportHeight = _height;
-	sharedShaderVars.Init();
-	UpdateSharedShaderVars();
 }
 mGLu::Window::~Window()
 {
@@ -171,7 +121,6 @@ mGLu::Window::~Window()
 }
 void mGLu::Window::__PreStart()
 {
-	sharedShaderVars.Init();
 	set_mGLu_glfw_callbacks();
 	startTime = std::chrono::high_resolution_clock::now();
 	lastFrameTime = std::chrono::high_resolution_clock::now();
@@ -186,48 +135,21 @@ void mGLu::Window::__PreUpdate()
 	deltaTime = std::chrono::duration<float>(currFrameTime - lastFrameTime).count();
 	mainLoopTime = std::chrono::duration<float>(currFrameTime - startTime).count();
 	lastFrameTime = currFrameTime;
+
+    mouseInput.Clear1FrameStates();
+	keyInput.ClearUnpressedKeys();
 }
 void mGLu::Window::StartMainLoop()
 {
 	__PreStart();
 	Start();
-	while (!glfwWindowShouldClose(window) && !m_shouldClose)
+	while (!glfwWindowShouldClose(window) && !_shouldClose)
 	{
 		__PreUpdate();
 		Update();
 	}
 }
-void mGLu::Window::UpdateSharedShaderVars()
-{
-	sharedShaderVars.data.deltaTime = DeltaTime();
-	sharedShaderVars.data.time = GetTime();
-	sharedShaderVars.UpdateData();
-}
 void mGLu::Window::UseCamera(mGLu::Camera &camera)
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, camera.fbo);
-    glViewport(camera.xOffset, camera.yOffset, camera.width, camera.height);
-	glScissor(camera.xOffset, camera.yOffset, camera.width, camera.height);
-    sharedShaderVars.data.projection = camera.projection;
-    sharedShaderVars.data.view = camera.view;
-	sharedShaderVars.data.viewportWidth = camera.GetSize().x;
-	sharedShaderVars.data.viewportHeight = camera.GetSize().y;
-}
-
-
-void mGLu::Window::_GlobalShaderVars::Init()
-{
-	glCreateBuffers(1, &ubo);
-	glNamedBufferStorage(ubo, sizeof(_GlobalShaderVarsData), &data, GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssboBindingPoint, ubo);
-}
-void mGLu::Window::_GlobalShaderVars::UpdateData()
-{
-	glNamedBufferSubData(ubo, 0, sizeof(_GlobalShaderVarsData), &data);
-}
-const char* mGLu::Window::GetShaderPrefix(std::size_t *shaderPrefixLength) const
-{
-	if(shaderPrefixLength)
-		*shaderPrefixLength = __DefaultWindowShaderPrefixLength;
-	return shaderPrefix.data();
+	// TODO
 }

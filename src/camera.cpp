@@ -7,8 +7,8 @@
 #include "camera.hpp"
 
 mGLu::Camera::Camera(int _xOffset, int _yOffset, int _width, int _height, bool useCustomFBO) : 
-    xOffset(_xOffset), yOffset(_yOffset),
-    width(_width), height(_height)
+    width(_width), height(_height),
+    xOffset(_xOffset), yOffset(_yOffset)
 {
     if(useCustomFBO)
     {

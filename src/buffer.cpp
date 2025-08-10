@@ -4,8 +4,8 @@
 namespace mGLu
 {
     Buffer::Buffer(GLsizeiptr bufferSize):
-        size(new GLsizeiptr(bufferSize)),
-        refCount(new unsigned int(1))
+        refCount(new unsigned int(1)),
+        size(new GLsizeiptr(bufferSize))
     {
         glCreateBuffers(1, (GLuint*)&name);
     }
@@ -14,9 +14,9 @@ namespace mGLu
         
     }
     Buffer::Buffer(const Buffer& other):
+        refCount(other.refCount),
         size(other.size),
-        name(other.name),
-        refCount(other.refCount)
+        name(other.name)
     {
         ++(*refCount);
     }
