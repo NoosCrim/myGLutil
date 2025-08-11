@@ -21,7 +21,7 @@ $(if $(filter $(TARGET_TYPE),EXEC),\
 
 $(TARGET_NAME): $$($(TARGET_NAME)_LINK_DEPS) $(TARGET_NAME)_link
 
-$(TARGET_NAME)_link: $$($(TARGET_NAME)_LINK_FILES) $(TARGET_NAME)_link_msg $$($(TARGET_NAME)_OUT_DIR)  $$($(TARGET_NAME)_OUT_FILE)
+$(TARGET_NAME)_link: $(TARGET_NAME)_compile $$($(TARGET_NAME)_LINK_FILES) $(TARGET_NAME)_link_msg $$($(TARGET_NAME)_OUT_DIR)  $$($(TARGET_NAME)_OUT_FILE)
 	
 $(TARGET_NAME)_link_msg:
 	@printf "$(STATUS_MSG_PREFIX) Linking $(TARGET_NAME)...\n"

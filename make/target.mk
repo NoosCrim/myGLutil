@@ -130,8 +130,20 @@ all_msg:
 	@printf "$(STATUS_MSG_PREFIX) Building all targets...\n"
 endef
 
+define compile_all_target
+compile_all: compile_all_msg $(addsuffix _compile, $(COMPILE_TARGETS))
+compile_all_msg:
+	@printf "$(STATUS_MSG_PREFIX) Compiling all targets...\n"
+endef
 
-PHONY.: all tests all_msg tests_msg
+define link_all_target
+link_all: link_all_msg $(addsuffix _link, $(LINK_TARGETS))
+link_all_msg:
+	@printf "$(STATUS_MSG_PREFIX) Linking all targets...\n"
+endef
+
+
+PHONY.: all tests all_msg tests_msg compile_all_target compile_all_msg
 
 
 include make/compile_target.mk
